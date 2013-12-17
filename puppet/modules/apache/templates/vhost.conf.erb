@@ -1,0 +1,12 @@
+<VirtualHost *:80>
+  ServerName <%= name %>
+  ServerAlias <%= name %>
+
+  DocumentRoot /var/www/<%= name %>
+
+  <Directory "/var/www/<%= name %>">
+    DirectoryIndex index.php
+    Order allow,deny
+    Allow from all
+  </Directory>
+</VirtualHost>
