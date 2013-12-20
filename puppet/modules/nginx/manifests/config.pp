@@ -1,51 +1,64 @@
-class nginx::config {
-  include common::data
-  $internal_network = $common::data::internal_network
-
-  if ! $common::data::internal_network {
-    fail("The variable 'common::data::internal_network' must be set")
+# Class: nginx::config
+#
+# This module manages NGINX bootstrap and configuration
+#
+# Parameters:
+#
+# There are no default parameters for this class.
+#
+# Actions:
+#
+# Requires:
+#
+# Sample Usage:
+#
+# This class file is not called directly
+class nginx::config inherits nginx::params {
+  File {
+    owner => 'root',
+    group => 'root',
+    mode  => '0644',
   }
 
-  file {
-    '/etc/nginx/nginx.conf':
-      require => Class['nginx::install'],
-      content => template('nginx/nginx.conf.erb'),
-      notify => Class['nginx::service'],
-      mode => '0644',
-      owner => 'root',
-      group => 'root';
-    '/etc/nginx/vhosts.d':
-      ensure => directory,
-      require => Class['nginx::install'];
-    '/etc/nginx/clusters.d':
-      ensure => directory,
-      require => Class['nginx::install'];
-    '/var/log/nginx':
-      ensure => directory,
-      require => Class['nginx::install'];
+  file { "${nginx::params::nx_conf_dir}":
+    ensure => directory,
   }
 
-  define cluster($servers) {
-    file {
-      "/etc/nginx/clusters.d/${name}.conf":
-        require => [ File["/etc/nginx/clusters.d"], Class['nginx::install'] ],
-        notify => Class['nginx::service'],
-        content => template('nginx/cluster.conf.erb'),
-        mode => '0644',
-        owner => 'root',
-        group => 'root';
-    }
+  file { "${nginx::params::nx_conf_dir}/conf.d":
+    ensure => directory,
   }
 
-  define vhost($cluster) {
-    file {
-      "/etc/nginx/vhosts.d/${name}.conf":
-        require => [ File["/etc/nginx/vhosts.d"], Class['nginx::install'] ],
-        notify => Class['nginx::service'],
-        content => template('nginx/vhost.conf.erb'),
-        mode => '0644',
-        owner => 'root',
-        group => 'root';
-    }
+  file { "${nginx::config::nx_run_dir}":
+    ensure => directory,
+  }
+
+  file { "${nginx::config::nx_client_body_temp_path}":
+    ensure => directory,
+    owner  => $nginx::params::nx_daemon_user,
+  }
+
+  file {"${nginx::config::nx_proxy_temp_path}":
+    ensure => directory,
+    owner  => $nginx::params::nx_daemon_user,
+  }
+
+  file { '/etc/nginx/sites-enabled/default':
+    ensure => absent,
+  }
+
+  file { "${nginx::params::nx_conf_dir}/nginx.conf":
+    ensure  => file,
+    content => template('nginx/conf.d/nginx.conf.erb'),
+  }
+
+  file { "${nginx::params::nx_conf_dir}/conf.d/proxy.conf":
+    ensure  => file,
+    content => template('nginx/conf.d/proxy.conf.erb'),
+  }
+
+  file { "${nginx::config::nx_temp_dir}/nginx.d":
+    ensure  => directory,
+    purge   => true,
+    recurse => true,
   }
 }

@@ -22,7 +22,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # resovolve NAT DNS problem
       # http://serverfault.com/questions/453185/vagrant-virtualbox-dns-10-0-2-3-not-working
       server_config.vm.provider :virtualbox do |vb|
-  	vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+         vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+         vb.customize ["modifyvm", :id, "--memory", "256"]
       end
       server_config.vm.host_name = server_name.to_s
       # hostonly network
@@ -31,28 +32,37 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       server_config.vm.provision :puppet do |puppet|
   	puppet.manifests_path = "puppet/manifests"
   	puppet.manifest_file  = "global.pp"
+        puppet.module_path  = "puppet/modules"
       end
       case server_name.to_s
 	when "lb" then 
   	  server_config.vm.network :forwarded_port, guest: 80, host: 8080
-	  server_config.vm.provision :shell, path: './shell/lb.sh' 
-#          server_config.vm.provision :puppet do |puppet|
-#  	    puppet.manifests_path = "puppet/manifests"
-#  	    puppet.manifest_file  = "lb.pp"
-#	    puppet.module_path  = "puppet/modules"
-#  	  end
-	when "web1","web2" then 
-	  server_config.vm.provision :shell, path: './shell/web.sh' 
-          server_config.vm.provision :puppet do |puppet|
+	  server_config.vm.provision :shell, path: './shell/lb-install.sh' 
+	  server_config.vm.provision :puppet do |puppet|
+		puppet.manifests_path = "puppet/manifests"
+		puppet.manifest_file  = "lb.pp"
+		puppet.module_path  = "puppet/modules"
+	    end
+	  server_config.vm.provision :shell, path: './shell/lb-restart.sh' 
+#	when "web1","web2" then 
+	when "web1" then 
+  	  #server_config.vm.network :forwarded_port, guest: 80, host: 8081
+          server_config.vm.provision :shell, path: './shell/web-install.sh' 
+	  server_config.vm.provision :puppet do |puppet|
   	    puppet.manifests_path = "puppet/manifests"
-  	    puppet.manifest_file  = "lb.pp"
+  	    puppet.manifest_file  = "web1.pp"
 	    puppet.module_path  = "puppet/modules"
   	  end
-	when "webl" then 
-	  puts("South Carolina")
+	  server_config.vm.provision :shell, path: './shell/web-restart.sh' 
 	when "web2" then 
-	  puts("South Carolina")
-#  	else puts("You have enter wrong abbreviation")
+  	  #server_config.vm.network :forwarded_port, guest: 80, host: 8082
+          server_config.vm.provision :shell, path: './shell/web-install.sh' 
+	  server_config.vm.provision :puppet do |puppet|
+  	    puppet.manifests_path = "puppet/manifests"
+  	    puppet.manifest_file  = "web2.pp"
+	    puppet.module_path  = "puppet/modules"
+  	  end
+	  server_config.vm.provision :shell, path: './shell/web-restart.sh' 
 	end
     end
   end

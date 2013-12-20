@@ -1,36 +1,32 @@
-class system-update {
+File { owner => 0, group => 0, mode => 0644 }
 
-  exec { 'apt-get update':
-    command => 'apt-get update',
-  }
-
-}
-class lb-packages {
-
-  $lbPackages = [ "nginx", "nfs-kernel-server" ]
-  package { $lbPackages:
-    ensure => "installed",
-    require => Exec['apt-get update'],
-  }
-}
-class { 'apt':
-  always_apt_update    => true
+file { '/etc/exports':
+      content => "/export           192.168.10.11(rw,no_subtree_check,async) 192.168.10.12(rw,no_subtree_check,async)"
 }
 
-Exec["apt-get update"] -> Package <| |>
+file { "/export":
+  path    => "/export",
+  mode    => 0755,
+  owner   => root,
+  group   => root,
+  ensure  => directory
+} 
 
-include system-update
-include lb-packages
+# put a index.php on nfs share
+include index
 
-#include nginx
-#
-#nginx::config::cluster{'test':
-#  servers => [
-#    '192.168.10.11:80',
-#    '192.168.10.12:80',
-#  ]
-#}
-#nginx::config::vhost{
-#  'zacmini.local':
-#    cluster => 'test',
-#}
+class { 'nginx': }
+
+nginx::resource::upstream { 'puppet_rack_app':
+        ensure   => present,
+        members => [
+         '192.168.10.11:80', 
+         '192.168.10.12:80',
+          ],
+}
+
+nginx::resource::vhost { '192.168.10.10':
+   ensure   => present,
+   proxy  => 'http://puppet_rack_app',
+   }
+
