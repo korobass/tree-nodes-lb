@@ -3,8 +3,8 @@ class nfs-mount {
 file { "/var/www/nfs":
   path    => "/var/www/nfs",
   mode    => 0755,
-  owner   => www-data,
-  group   => www-data,
+#  owner   => www-data,
+#  group   => www-data,
   ensure  => directory
 } 
 
