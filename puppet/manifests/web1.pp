@@ -36,27 +36,28 @@ class {
 	package_name => 'mysql-client',
 }
 
-mysql_user{ 
-  'dspam@%':
-  ensure        => present,
-  password_hash => mysql_password('blah'),
-  require => Class['mysql::server'],
-}
+#mysql_database {
+#  'dspam': 
+#  ensure  => 'present',
+#  charset => 'utf8',
+#  require => Class['mysql::server'],
+#	}
+#
 
-mysql_database {
-  'dspam': 
-  ensure  => 'present',
-  charset => 'utf8',
-  require => Class['mysql::server'],
-	}
-
-mysql_grant{'dspam@%/dspam.*':
-  user       => 'dspam@%',
-  table      => 'dspam.*',
-  privileges => ['ALL'],
-  require => Class['mysql::server'],
-}
-
+#mysql_user{ 
+#  'dspam@localhost':
+#  ensure        => present,
+#  password_hash => mysql_password('blah'),
+#  require => Class['mysql::server'],
+#}
+#
+#mysql_grant{'dspam@localhost':
+#  user       => 'dspam@localhost',
+#  table      => 'dspam.*',
+#  privileges => ['ALL'],
+#  require => Class['mysql::server'],
+#}
+#
 #GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'%' IDENTIFIED BY 'password';
 mysql_user{ 
   'slave@%':
@@ -68,7 +69,7 @@ mysql_user{
 mysql_grant{'slave@%':
   user       => 'slave@%',
   table      => '*.*',
-  privileges => ['REPLICATION SLAVE'],
+  privileges => ['SUPER', 'REPLICATION SLAVE'],
   require => Class['mysql::server'],
 }
 
@@ -80,6 +81,7 @@ mysql_grant{'slave@%':
       source => 'puppet:///modules/mysql/mysql-master.cnf',
       require => Class['mysql::server'],
   }
+
   file {
     '/etc/mysql/mysql_objects-4.1.sql':
       owner => 'root',
@@ -88,6 +90,7 @@ mysql_grant{'slave@%':
       source => 'puppet:///modules/mysql/mysql_objects-4.1.sql',
       require => Class['mysql::server'],
   }
+
   file {
     '/etc/mysql/virtual_users.sql':
       owner => 'root',
@@ -97,7 +100,28 @@ mysql_grant{'slave@%':
       require => Class['mysql::server'],
   }
 
+mysql::db { "dspam":
+      ensure  => 'present',
+      charset => 'utf8',
+#      enforce_sql => true,
+      user     => 'dspam',
+      password => 'blah',
+      host     => 'localhost',
+      grant    => ['ALL'],
+      sql      =>  '/etc/mysql/virtual_users.sql',
+      require  => File['/etc/mysql/mysql_objects-4.1.sql', '/etc/mysql/virtual_users.sql'],
+}
 
+mysql_user{ 
+  'dspam@%':
+  ensure        => present,
+  password_hash => mysql_password('blah'),
+  require => Class['mysql::server'],
+}
 
-
-
+mysql_grant{'dspam@%':
+  user       => 'dspam@%',
+  table      => 'dspam.*',
+  privileges => ['ALL'],
+  require => Class['mysql::server'],
+}

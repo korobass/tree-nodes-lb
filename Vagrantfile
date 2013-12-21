@@ -63,6 +63,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 	    puppet.module_path  = "puppet/modules"
   	  end
 	  server_config.vm.provision :shell, path: './shell/web-restart.sh' 
+	  server_config.vm.provision :shell, path: './shell/mysql-slave-init.sh'
 	end
     end
   end

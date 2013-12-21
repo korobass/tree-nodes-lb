@@ -1,15 +1,127 @@
-class { 'apache':
-   mpm_module => prefork,
+class { 
+  'apache':
+  mpm_module => prefork,
   default_confd_files => false,
-  default_vhost => false,
+  default_vhost => false
 #      default_mods        => false,
     }
-apache::vhost { '192.168.10.12':
-      port          => '80',
-      docroot       => '/var/www/nfs',
-      docroot_owner => 'www-data',
-      docroot_group => 'www-data',
-    }
+
+apache::vhost { 
+  '192.168.10.12':
+  port          => '80',
+  docroot       => '/var/www/nfs',
+  docroot_owner => 'www-data',
+  docroot_group => 'www-data'
+  }
+
 apache::mod { 'php5': }
 
 include nfs-mount
+
+class { 
+  '::mysql::server':
+  	root_password    => 'alamakota12345678',
+    	override_options => { 
+		'mysqld' => { 
+			'max_connections' => '1024',
+			'bind_address' => '0.0.0.0', 
+#			'restart' => 'true', 
+			} 
+		}
+}
+
+class {
+  '::mysql::client':
+        package_ensure => 'present',
+	package_name => 'mysql-client',
+}
+
+#mysql_database {
+#  'dspam': 
+#  ensure  => 'present',
+#  charset => 'utf8',
+#  require => Class['mysql::server'],
+#	}
+#
+
+#mysql_user{ 
+#  'dspam@localhost':
+#  ensure        => present,
+#  password_hash => mysql_password('blah'),
+#  require => Class['mysql::server'],
+#}
+#
+#mysql_grant{'dspam@localhost':
+#  user       => 'dspam@localhost',
+#  table      => 'dspam.*',
+#  privileges => ['ALL'],
+#  require => Class['mysql::server'],
+#}
+#
+#GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'%' IDENTIFIED BY 'password';
+mysql_user{ 
+  'slave@%':
+  ensure        => present,
+  password_hash => mysql_password('slave123'),
+  require => Class['mysql::server'],
+}
+
+mysql_grant{'slave@%':
+  user       => 'slave@%',
+  table      => '*.*',
+  privileges => ['SUPER', 'REPLICATION SLAVE'],
+  require => Class['mysql::server'],
+}
+
+  file {
+    '/etc/mysql/conf.d/mysql-slave.cnf':
+      owner => 'root',
+      group => 'root',
+      mode => '0644',
+      source => 'puppet:///modules/mysql/mysql-slave.cnf',
+      require => Class['mysql::server'],
+  }
+
+  file {
+    '/etc/mysql/mysql_objects-4.1.sql':
+      owner => 'root',
+      group => 'root',
+      mode => '0644',
+      source => 'puppet:///modules/mysql/mysql_objects-4.1.sql',
+      require => Class['mysql::server'],
+  }
+
+  file {
+    '/etc/mysql/virtual_users.sql':
+      owner => 'root',
+      group => 'root',
+      mode => '0644',
+      source => 'puppet:///modules/mysql/virtual_users.sql',
+      require => Class['mysql::server'],
+  }
+
+mysql::db { "dspam":
+      ensure  => 'present',
+      charset => 'utf8',
+#      enforce_sql => true,
+      user     => 'dspam',
+      password => 'blah',
+      host     => 'localhost',
+      grant    => ['ALL'],
+      sql      =>  '/etc/mysql/virtual_users.sql',
+      require  => File['/etc/mysql/mysql_objects-4.1.sql', '/etc/mysql/virtual_users.sql'],
+}
+
+mysql_user{ 
+  'dspam@%':
+  ensure        => present,
+  password_hash => mysql_password('blah'),
+  require => Class['mysql::server'],
+}
+
+mysql_grant{'dspam@%':
+  user       => 'dspam@%',
+  table      => 'dspam.*',
+  privileges => ['ALL'],
+  require => Class['mysql::server'],
+}
